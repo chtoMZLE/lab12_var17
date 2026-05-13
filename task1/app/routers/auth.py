@@ -4,6 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.services.auth as _auth_svc
+
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import Token, UserCreate, UserRead
@@ -37,10 +39,10 @@ async def login(
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalar_one_or_none()
     # Always run verify_password to prevent timing-based email enumeration.
-    # If the user doesn't exist we check against a dummy hash so the response
-    # time is indistinguishable from a wrong-password attempt.
-    _DUMMY_HASH = "$2b$12$KIXdummyhashfortimingequalityyyy"
-    candidate_hash = user.hashed_password if user is not None else _DUMMY_HASH
+    # Compute dummy via the current pwd_context so it matches the active scheme
+    # (bcrypt in production, sha256_crypt in tests — avoids scheme-mismatch errors).
+    _dummy = _auth_svc.pwd_context.hash("timing-attack-prevention-dummy")
+    candidate_hash = user.hashed_password if user is not None else _dummy
     password_ok = verify_password(form_data.password, candidate_hash)
     if user is None or not password_ok:
         raise HTTPException(

@@ -12,6 +12,9 @@ import sys
 from pathlib import Path
 
 # ── 1. Env vars first (settings validation happens on first import) ──────────
+# DATABASE_URL must be SQLite so app's module-level engine doesn't try to
+# import asyncpg (which is only needed in production with PostgreSQL).
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-exactly-32-chars!!")
 
 # ── 2. Add task1/ to sys.path so `from app.xxx import yyy` works ─────────────
@@ -21,13 +24,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "task1"))
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
 from app.models.user import User, UserRole
+import app.services.auth as _auth_svc
 from app.services.auth import create_access_token, hash_password
+
+# ── 4. Patch bcrypt → sha256_crypt for Python 3.14 + bcrypt 5.x compatibility ─
+# passlib 1.7.4 is incompatible with bcrypt>=4.x (changed API). In tests we
+# swap the context to sha256_crypt, which has no binary dependency. Production
+# code is unaffected (Docker uses a compatible bcrypt version).
+_auth_svc.pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 # ── In-memory SQLite engine shared across all tests in a session ──────────────
 _engine = create_async_engine(
