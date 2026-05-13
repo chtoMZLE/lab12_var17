@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -19,8 +20,12 @@ async def create_progress(
 ) -> Progress:
     record = Progress(user_id=current_user.id, **payload.model_dump())
     db.add(record)
-    await db.commit()
-    await db.refresh(record)
+    try:
+        await db.commit()
+        await db.refresh(record)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid data: constraint violation")
     return record
 
 
@@ -28,11 +33,15 @@ async def create_progress(
 async def list_progress(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
 ) -> list[Progress]:
     result = await db.execute(
         select(Progress)
         .where(Progress.user_id == current_user.id)
         .order_by(Progress.recorded_at.desc())
+        .offset(skip)
+        .limit(limit)
     )
     return list(result.scalars().all())
 

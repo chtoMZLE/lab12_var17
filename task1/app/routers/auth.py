@@ -36,7 +36,13 @@ async def login(
 ) -> Token:
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalar_one_or_none()
-    if user is None or not verify_password(form_data.password, user.hashed_password):
+    # Always run verify_password to prevent timing-based email enumeration.
+    # If the user doesn't exist we check against a dummy hash so the response
+    # time is indistinguishable from a wrong-password attempt.
+    _DUMMY_HASH = "$2b$12$KIXdummyhashfortimingequalityyyy"
+    candidate_hash = user.hashed_password if user is not None else _DUMMY_HASH
+    password_ok = verify_password(form_data.password, candidate_hash)
+    if user is None or not password_ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",

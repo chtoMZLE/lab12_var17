@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -30,8 +31,12 @@ async def create_exercise(
     await _verify_workout_owner(workout_id, current_user.id, db)
     exercise = Exercise(workout_id=workout_id, **payload.model_dump())
     db.add(exercise)
-    await db.commit()
-    await db.refresh(exercise)
+    try:
+        await db.commit()
+        await db.refresh(exercise)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workout not found")
     return exercise
 
 
@@ -40,9 +45,13 @@ async def list_exercises(
     workout_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
 ) -> list[Exercise]:
     await _verify_workout_owner(workout_id, current_user.id, db)
-    result = await db.execute(select(Exercise).where(Exercise.workout_id == workout_id))
+    result = await db.execute(
+        select(Exercise).where(Exercise.workout_id == workout_id).offset(skip).limit(limit)
+    )
     return list(result.scalars().all())
 
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -48,7 +48,7 @@ async def create_workout(
         workout.exercises.append(exercise)
     db.add(workout)
     await db.commit()
-    await db.refresh(workout)
+    # Skip db.refresh: the re-fetch with selectinload below is the single source of truth.
     result = await db.execute(
         select(Workout).where(Workout.id == workout.id).options(selectinload(Workout.exercises))
     )
@@ -59,12 +59,16 @@ async def create_workout(
 async def list_workouts(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
 ) -> list[Workout]:
     result = await db.execute(
         select(Workout)
         .where(Workout.user_id == current_user.id)
         .options(selectinload(Workout.exercises))
         .order_by(Workout.date.desc())
+        .offset(skip)
+        .limit(limit)
     )
     return list(result.scalars().all())
 
@@ -89,7 +93,6 @@ async def update_workout(
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(workout, field, value)
     await db.commit()
-    await db.refresh(workout)
     result = await db.execute(
         select(Workout).where(Workout.id == workout.id).options(selectinload(Workout.exercises))
     )

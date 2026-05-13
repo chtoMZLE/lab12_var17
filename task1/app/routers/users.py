@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,8 +39,12 @@ async def update_me(
 # --- Admin endpoints ---
 
 @router.get("/", response_model=list[UserRead], dependencies=[Depends(get_current_admin)])
-async def list_users(db: AsyncSession = Depends(get_db)) -> list[User]:
-    result = await db.execute(select(User))
+async def list_users(
+    db: AsyncSession = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+) -> list[User]:
+    result = await db.execute(select(User).offset(skip).limit(limit))
     return list(result.scalars().all())
 
 
