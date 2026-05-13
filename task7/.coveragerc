@@ -1,0 +1,13 @@
+[coverage:run]
+source = app
+omit =
+    */alembic/*
+    */__pycache__/*
+
+[coverage:report]
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+    def __repr__
+    raise NotImplementedError
+    \.\.\.
