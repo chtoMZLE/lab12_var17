@@ -299,3 +299,5 @@ test_ai_review.py ..............................  [100%]
 
 Все 30 тестов работают без реальных API-вызовов — Anthropic SDK и httpx замокированы через `unittest.mock`.
 
+
+<!-- test AI review -->
