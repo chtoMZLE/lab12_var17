@@ -299,3 +299,11 @@ test_ai_review.py ..............................  [100%]
 
 Все 30 тестов работают без реальных API-вызовов — Anthropic SDK и httpx замокированы через `unittest.mock`.
 
+
+### Проверка работы CI/CD (Задание 4)
+
+Workflow .github/workflows/ai-review.yml был протестирован на двух Pull Request'ах:
+
+PR #1 (test/ai-review-check) — workflow успешно запустился и завершился за 16 секунд (Status: Success). Комментарий не был опубликован, так как git diff оказался пустым: коммит затрагивал только уже смёрдженные изменения. Скрипт корректно определил пустой диф и завершил работу с сообщением Empty diff — nothing to review.
+
+PR #2 — workflow запустился, диф был получен (314 символов) и успешно передан в Claude API. Скрипт завершился с ошибкой anthropic.BadRequestError: Your credit balance is too low — недостаточно кредитов на аккаунте Anthropic. Сама логика скрипта и workflow отработали корректно; причина сбоя — внешнее ограничение платформы.
