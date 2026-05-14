@@ -9,6 +9,13 @@ class ProgressCreate(BaseModel):
     total_reps: int | None = None
     recorded_at: datetime
 
+    @field_validator("exercise_name")
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Exercise name cannot be empty")
+        return v.strip()
+
     @field_validator("max_weight_kg")
     @classmethod
     def weight_non_negative(cls, v: float | None) -> float | None:

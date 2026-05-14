@@ -3,14 +3,12 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
-from app.database import Base, engine
 from app.routers import analytics, auth, exercises, progress, users, workouts
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Schema is managed by Alembic — run `alembic upgrade head` before starting
     yield
 
 

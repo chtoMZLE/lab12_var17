@@ -39,6 +39,7 @@ from app.services.auth import create_access_token, hash_password
 # swap the context to sha256_crypt, which has no binary dependency. Production
 # code is unaffected (Docker uses a compatible bcrypt version).
 _auth_svc.pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
+_auth_svc._DUMMY_HASH = _auth_svc.pwd_context.hash("timing-attack-prevention-dummy")
 
 # ── In-memory SQLite engine shared across all tests in a session ──────────────
 _engine = create_async_engine(

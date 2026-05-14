@@ -39,10 +39,7 @@ async def login(
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalar_one_or_none()
     # Always run verify_password to prevent timing-based email enumeration.
-    # Compute dummy via the current pwd_context so it matches the active scheme
-    # (bcrypt in production, sha256_crypt in tests — avoids scheme-mismatch errors).
-    _dummy = _auth_svc.pwd_context.hash("timing-attack-prevention-dummy")
-    candidate_hash = user.hashed_password if user is not None else _dummy
+    candidate_hash = user.hashed_password if user is not None else _auth_svc._DUMMY_HASH
     password_ok = verify_password(form_data.password, candidate_hash)
     if user is None or not password_ok:
         raise HTTPException(

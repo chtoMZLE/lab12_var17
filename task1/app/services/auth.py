@@ -7,6 +7,12 @@ from app.config import settings
 from app.schemas.user import TokenData
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Computed once at startup — reused in every login to avoid ~100ms bcrypt cost per request.
+# Falls back to "" if bcrypt unavailable (test env); conftest.py regenerates it.
+try:
+    _DUMMY_HASH: str = pwd_context.hash("timing-attack-prevention-dummy")
+except Exception:
+    _DUMMY_HASH = ""
 
 
 def hash_password(password: str) -> str:

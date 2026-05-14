@@ -9,6 +9,13 @@ class ExerciseCreate(BaseModel):
     reps: int
     weight_kg: float | None = None
 
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Name cannot be empty")
+        return v.strip()
+
     @field_validator("sets", "reps")
     @classmethod
     def must_be_positive(cls, v: int) -> int:
@@ -29,6 +36,20 @@ class ExerciseUpdate(BaseModel):
     sets: int | None = None
     reps: int | None = None
     weight_kg: float | None = None
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("Name cannot be empty")
+        return v.strip() if v is not None else v
+
+    @field_validator("sets", "reps")
+    @classmethod
+    def must_be_positive(cls, v: int | None) -> int | None:
+        if v is not None and v <= 0:
+            raise ValueError("Must be a positive integer")
+        return v
 
 
 class ExerciseRead(BaseModel):

@@ -12,6 +12,13 @@ class WorkoutCreate(BaseModel):
     notes: str | None = None
     exercises: list[ExerciseCreate] = []
 
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Name cannot be empty")
+        return v.strip()
+
     @field_validator("duration_minutes")
     @classmethod
     def duration_positive(cls, v: int | None) -> int | None:
