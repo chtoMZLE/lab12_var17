@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import os
 import sys
-import textwrap
 
 import anthropic
 import httpx
@@ -24,36 +23,43 @@ import httpx
 # Claude will only see this many characters of diff to stay within context limits.
 _MAX_DIFF_CHARS = 60_000
 
-_REVIEW_PROMPT = textwrap.dedent("""\
-    You are a senior Python developer conducting a thorough code review.
-    Analyze the git diff below and respond **in Russian** using exactly these sections:
+_REVIEW_PROMPT_PREFIX = """\
+You are a senior Python developer conducting a thorough code review.
+Analyze the git diff below and respond **in Russian** using exactly these sections:
 
-    ## 📝 Краткое описание изменений
-    2–3 sentences: what does this PR do and why?
+## 📝 Краткое описание изменений
+2–3 sentences: what does this PR do and why?
 
-    ## 🔍 Основные изменения
-    Bullet list of the key changes with file names.
+## 🔍 Основные изменения
+Bullet list of the key changes with file names.
 
-    ## ⚠️ Найденные проблемы
-    For each problem use the format:
-    - **[Категория]** `file:line` — описание проблемы и рекомендация
+## ⚠️ Найденные проблемы
+For each problem use the format:
+- **[Категория]** `file:line` — описание проблемы и рекомендация
 
-    Categories: Безопасность | Производительность | Логика | Стиль/PEP8 | Обработка ошибок
+Categories: Безопасность | Производительность | Логика | Стиль/PEP8 | Обработка ошибок
 
-    If no problems are found, write: "Критических проблем не обнаружено."
+If no problems are found, write: "Критических проблем не обнаружено."
 
-    ## 🧪 Покрытие тестами
-    Are new code paths covered by tests? What should be tested?
+## 🧪 Покрытие тестами
+Are new code paths covered by tests? What should be tested?
 
-    ## ✅ Итог
-    One line: **Готово к мерджу** or **Требует доработки** — and a one-sentence reason.
+## ✅ Итог
+One line: **Готово к мерджу** or **Требует доработки** — and a one-sentence reason.
 
-    ---
-    Git diff:
-    ```diff
-    {diff}
-    ```
-""")
+---
+Git diff:
+```diff
+"""
+
+_REVIEW_PROMPT_SUFFIX = "\n```\n"
+
+
+def _build_prompt(diff: str) -> str:
+    # Build prompt via concatenation — NOT .format() — because diffs routinely
+    # contain curly braces (f-strings, Rust format macros, JS template literals)
+    # that would cause KeyError with str.format().
+    return _REVIEW_PROMPT_PREFIX + diff + _REVIEW_PROMPT_SUFFIX
 
 
 def _load_diff() -> str:
@@ -80,14 +86,10 @@ def _analyze(diff: str) -> str:
     message = client.messages.create(
         model="claude-opus-4-7",
         max_tokens=2048,
-        messages=[
-            {
-                "role": "user",
-                "content": _REVIEW_PROMPT.format(diff=diff),
-            }
-        ],
+        messages=[{"role": "user", "content": _build_prompt(diff)}],
     )
-    return message.content[0].text  # type: ignore[index]
+    block = message.content[0]
+    return block.text  # type: ignore[union-attr]
 
 
 def _post_comment(review_text: str) -> None:
