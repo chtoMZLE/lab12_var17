@@ -167,3 +167,30 @@ Required test coverage of 90% reached. Total coverage: 96.23%
 | **Статус тестов (task7)** | ✅ 77 passed, coverage 96.23% |
 | **Статус тестов (task4)** | ✅ 30 passed |
 | **Общее время** | ~120 минут |
+
+
+# После ручного ревью были исправлены следующие ошибки:
+## Чеклист исправлений по ревью
+ 
+## Критические
+ 
+- Убран `Base.metadata.create_all()` из `main.py` — конфликтовал с Alembic
+- Создана начальная Alembic-миграция `0001_initial_schema.py` с полной схемой БД
+- `_DUMMY_HASH` вынесен на уровень модуля в `services/auth.py` — вычисляется один раз при старте
+## Безопасность
+ 
+- `docker-compose.yml` использует `${POSTGRES_PASSWORD}` из `.env` вместо захардкоженного пароля
+- `.env.example` обновлён — добавлена переменная `POSTGRES_PASSWORD`
+## Валидация данных
+ 
+- Валидатор пустых строк для поля `name` в `ExerciseCreate`
+- Валидатор пустых строк для поля `name` в `WorkoutCreate`
+- Валидатор пустых строк для поля `exercise_name` в `ProgressCreate`
+- Валидаторы `sets > 0` и `reps > 0` добавлены в `ExerciseUpdate`
+## Тесты
+ 
+- `conftest.py` обновлён — `_DUMMY_HASH` регенерируется после патча `pwd_context`
+---
+ 
+**Результат:** 77 тестов прошли, покрытие **95.13%** 
+ 
